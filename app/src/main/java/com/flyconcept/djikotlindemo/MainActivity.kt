@@ -4,23 +4,34 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.flyconcept.djikotlindemo.databinding.ActivityMainBinding
 import dji.common.error.DJIError
 import dji.common.error.DJISDKError
+import dji.common.realname.AircraftBindingState
+import dji.common.realname.AircraftBindingState.AircraftBindingStateListener
+import dji.common.realname.AppActivationState
+import dji.common.realname.AppActivationState.AppActivationStateListener
+import dji.common.useraccount.UserAccountState
+import dji.common.util.CommonCallbacks.CompletionCallbackWith
 import dji.sdk.base.BaseComponent
 import dji.sdk.base.BaseProduct
+import dji.sdk.realname.AppActivationManager
 import dji.sdk.sdkmanager.DJISDKInitEvent
 import dji.sdk.sdkmanager.DJISDKManager
+import dji.sdk.useraccount.UserAccountManager
 import java.util.concurrent.atomic.AtomicBoolean
 
-class MainActivity : AppCompatActivity() {
+
+class MainActivity : AppCompatActivity(),View.OnClickListener {
     companion object {
         private val TAG = "MainActivity"
         private const val FLAG_CONNECTION_CHANGE = "dji_sdk_connection_change"
@@ -45,10 +56,16 @@ class MainActivity : AppCompatActivity() {
         )
         private const val REQUEST_PERMISSION_CODE = 125 //integer constant used when requesting app permissions
     }
+    private var activityMainActivity:ActivityMainBinding? = null
     private val missingPermission = ArrayList<String>()
     private val isRegistrationInProgress = AtomicBoolean(false)
+    private var appActivationManager: AppActivationManager? = null
+    private var activationStateListener: AppActivationStateListener? = null
+    private var bindingStateListener: AircraftBindingStateListener? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        activityMainActivity = ActivityMainBinding.inflate(layoutInflater)
         Log.d(TAG, "MainActivity created")
 
         //If the Android version running on the user's device is at least Android 6 (Marshmallow) or API level 23, check and request permissions.
@@ -56,7 +73,22 @@ class MainActivity : AppCompatActivity() {
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
             checkAndRequestPermissions()
         }
-        setContentView(R.layout.activity_main)
+        setContentView(activityMainActivity!!.root)
+
+        initUI()
+        initData()
+    }
+
+    override fun onResume() {
+        Log.e(TAG, "onResume")
+        setUpListener()
+        super.onResume()
+    }
+
+    override fun onDestroy() {
+        Log.e(TAG, "onDestroy")
+        tearDownListener()
+        super.onDestroy()
     }
     private fun checkAndRequestPermissions(){
         //For each permission in the REQUIRED_PERMISSION_LIST, if the device has not already granted this permission, add it to the missingPermission list
@@ -210,4 +242,85 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun initUI(){
+        activityMainActivity!!.btnLogin.setOnClickListener(this)
+        activityMainActivity!!.btnLogout.setOnClickListener(this)
+
+    }
+    fun initData(){
+        setUpListener()
+        appActivationManager = DJISDKManager.getInstance().appActivationManager
+
+        if(appActivationManager != null){
+            appActivationManager!!.addAppActivationStateListener(activationStateListener!!)
+            appActivationManager!!.addAircraftBindingStateListener(bindingStateListener!!)
+
+            runOnUiThread {
+                activityMainActivity!!.tvActivationStateInfo.text = ("" + appActivationManager!!.appActivationState)
+                activityMainActivity!!.tvBindingStateInfo.text = "" + appActivationManager!!.aircraftBindingState
+            }
+        }
+    }
+
+    private fun setUpListener() {
+        activationStateListener =
+            AppActivationStateListener { appActivationState ->
+                runOnUiThread {
+                    activityMainActivity!!.tvActivationStateInfo.text = "" + appActivationState
+                }
+            }
+
+        bindingStateListener =
+            AircraftBindingStateListener { bindingState ->
+                runOnUiThread {
+                    activityMainActivity!!.tvBindingStateInfo.text = "" + bindingState
+                }
+            }
+    }
+    private fun tearDownListener() {
+        if (activationStateListener != null) {
+            appActivationManager!!.removeAppActivationStateListener(activationStateListener!!)
+            runOnUiThread { activityMainActivity!!.tvActivationStateInfo.text = "Unknown" }
+        }
+        if (bindingStateListener != null) {
+            appActivationManager!!.removeAircraftBindingStateListener(bindingStateListener!!)
+            runOnUiThread { activityMainActivity!!.tvBindingStateInfo.text = "Unknown" }
+        }
+    }
+    private fun loginAccount() {
+        UserAccountManager.getInstance().logIntoDJIUserAccount(this,
+            object : CompletionCallbackWith<UserAccountState?> {
+                override fun onSuccess(userAccountState: UserAccountState?) {
+                    showToast("Login Success")
+                }
+
+                override fun onFailure(error: DJIError) {
+                    showToast(
+                        "Login Error:"
+                                + error.description
+                    )
+                }
+            })
+    }
+
+    private fun logoutAccount() {
+        UserAccountManager.getInstance().logoutOfDJIUserAccount { error ->
+            if (error != null) {
+                showToast("Logout Success")
+            } else {
+                showToast("Logout Error$error")
+            }
+        }
+    }
+    override fun onClick(v: View) {
+        when(v.id){
+             R.id.btn_login->{
+                    loginAccount()
+             }
+
+            R.id.btn_logout->{
+                    logoutAccount()
+            }
+        }
+    }
 }
