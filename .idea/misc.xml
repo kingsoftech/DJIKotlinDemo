@@ -3,6 +3,10 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Users/SOFTECH/AndroidStudioProjects/DJIKotlinDemo/app/src/main/res/drawable/round_btn.xml" value="0.17" />
+        <entry key="..\:/Users/SOFTECH/AndroidStudioProjects/DJIKotlinDemo/app/src/main/res/drawable/round_btn_disable.xml" value="0.1" />
+        <entry key="..\:/Users/SOFTECH/AndroidStudioProjects/DJIKotlinDemo/app/src/main/res/drawable/round_btn_normal.xml" value="0.17" />
+        <entry key="..\:/Users/SOFTECH/AndroidStudioProjects/DJIKotlinDemo/app/src/main/res/drawable/round_btn_pressed.xml" value="0.1" />
         <entry key="..\:/Users/SOFTECH/AndroidStudioProjects/DJIKotlinDemo/app/src/main/res/layout/activity_main.xml" value="0.1921875" />
       </map>
     </option>
